@@ -1,12 +1,30 @@
 import { mainHelpKeyboard, faqListKeyboard } from "./ui.js";
-import { getRules, getWelcome, listFaqs, getFaq, getSettings, upsertUserFromStart } from "./storage.js";
+import {
+  getRules,
+  getWelcome,
+  listFaqs,
+  getFaq,
+  getSettings,
+  upsertUserFromStart
+} from "./storage.js";
 
 export function registerUserHandlers(bot, { admins }) {
+  // /start (private)
   bot.command("start", async (ctx) => {
     if (ctx.chat?.type !== "private") return;
 
-    // Save user for broadcast
-    await upsertUserFromStart(ctx);
+    // Save user for broadcast (Firestore)
+    try {
+      await upsertUserFromStart(ctx);
+    } catch (err) {
+      console.error("START_SAVE_ERROR:", err);
+      await ctx.reply(
+        "⚠️ /start save failed. Please check Vercel Logs.\n\n" +
+          "Error: " +
+          (err?.message || String(err))
+      );
+      return;
+    }
 
     await ctx.reply(
       "👋 Hi! Help Board bot ready.\n\nGroup এ add করো, তারপর গ্রুপে /help দিলেই বোর্ড আসবে।",
@@ -14,10 +32,14 @@ export function registerUserHandlers(bot, { admins }) {
     );
   });
 
+  // /help (group or private)
   bot.command("help", async (ctx) => {
-    await ctx.reply("🧩 Help Board\nChoose an option:", { reply_markup: mainHelpKeyboard() });
+    await ctx.reply("🧩 Help Board\nChoose an option:", {
+      reply_markup: mainHelpKeyboard()
+    });
   });
 
+  // Welcome on join (group)
   bot.on("message:new_chat_members", async (ctx) => {
     const chatId = ctx.chat.id;
     const settings = await getSettings(chatId);
@@ -31,10 +53,13 @@ export function registerUserHandlers(bot, { admins }) {
     }
 
     if (settings.helpOnJoin) {
-      await ctx.reply("Need help? Open the Help Board:", { reply_markup: mainHelpKeyboard() });
+      await ctx.reply("Need help? Open the Help Board:", {
+        reply_markup: mainHelpKeyboard()
+      });
     }
   });
 
+  // Help board callbacks
   bot.callbackQuery("HELP_FAQ", async (ctx) => {
     const chatId = ctx.chat.id;
     const faqs = await listFaqs(chatId);
@@ -67,13 +92,15 @@ export function registerUserHandlers(bot, { admins }) {
   });
 
   bot.callbackQuery("HELP_CONTACT", async (ctx) => {
-    // simple version: show admin usernames/ids
+    // simple version
     await ctx.reply("👮 Contact Admin\nAdmins are available. Please message them directly if needed.");
     await ctx.answerCallbackQuery();
   });
 
   bot.callbackQuery("HELP_BACK", async (ctx) => {
-    await ctx.editMessageText("🧩 Help Board\nChoose an option:", { reply_markup: mainHelpKeyboard() });
+    await ctx.editMessageText("🧩 Help Board\nChoose an option:", {
+      reply_markup: mainHelpKeyboard()
+    });
     await ctx.answerCallbackQuery();
   });
 }
