@@ -2,21 +2,33 @@ import { Bot } from "grammy";
 import { registerUserHandlers } from "./user.js";
 import { registerAdminHandlers } from "./admin.js";
 
-export function createBot() {
-  const token = process.env.BOT_TOKEN;
-  if (!token) throw new Error("BOT_TOKEN missing");
+let botSingleton = null;
+let botInitPromise = null;
 
-  const admins = (process.env.ADMIN_IDS || "")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(Number);
+export async function getBot() {
+  if (!botSingleton) {
+    const token = process.env.BOT_TOKEN;
+    if (!token) throw new Error("BOT_TOKEN missing");
 
-  const bot = new Bot(token);
+    const admins = (process.env.ADMIN_IDS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map(Number);
 
-  registerUserHandlers(bot, { admins });
-  registerAdminHandlers(bot, { admins });
+    botSingleton = new Bot(token);
 
-  bot.catch((err) => console.error("BOT_ERROR:", err));
-  return bot;
+    registerUserHandlers(botSingleton, { admins });
+    registerAdminHandlers(botSingleton, { admins });
+
+    botSingleton.catch((err) => console.error("BOT_ERROR:", err));
+  }
+
+  // ✅ Ensure init runs once (needed for serverless)
+  if (!botInitPromise) {
+    botInitPromise = botSingleton.init();
+  }
+  await botInitPromise;
+
+  return botSingleton;
 }
