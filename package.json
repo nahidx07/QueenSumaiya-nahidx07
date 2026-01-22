@@ -1,0 +1,14 @@
+{
+  "name": "telegram-help-board-bot-firebase",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "grammy": "^1.36.0",
+    "next": "^14.2.5"
+  }
+}
